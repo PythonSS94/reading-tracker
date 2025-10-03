@@ -27,6 +27,17 @@
     input,select{color:var(--select-text);background:var(--select-bg);border:1px solid var(--select-border);outline:none;padding:10px 12px;border-radius:12px}
     select option{background:var(--select-bg);color:var(--select-text)}
     table{width:100%;border-collapse:collapse}
+    /* горизонтальная прокрутка для узких экранов */
+    table.scroll{display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; white-space:nowrap;}
+    /* переносы и компактность на мобильном */
+    @media (max-width:640px){
+      h1{font-size:18px}
+      .card{padding:14px}
+      .row{gap:8px}
+      input,select,.btn{font-size:15px}
+      th,td{padding:8px}
+      .muted,.hint{font-size:12px}
+    }
     th,td{padding:10px;border-bottom:1px solid #2a2f4b}
     tr:hover td{background:rgba(108,140,255,.06)}
     .right{text-align:right}
@@ -97,7 +108,7 @@
       <!-- Журнал -->
       <div class="card col-12">
         <div class="section-title">Журнал</div>
-        <table id="entriesTbl"><thead><tr><th>Дата (пятница)</th><th>Читатель</th><th class="right">Страницы</th><th class="right">Штраф</th><th class="right">Действия</th></tr></thead><tbody></tbody></table>
+        <table class="scroll" id="entriesTbl"><thead><tr><th>Дата (пятница)</th><th>Читатель</th><th class="right">Страницы</th><th class="right">Штраф</th><th class="right">Действия</th></tr></thead><tbody></tbody></table>
       </div>
 
       <!-- Оплаты -->
@@ -108,7 +119,7 @@
           <input id="payAmount" type="number" min="0" step="1" placeholder="Сумма">
           <button id="addPayment" class="btn ok">Зачесть оплату</button>
         </div>
-        <table id="paymentsTbl" style="margin-top:10px"><thead><tr><th>Дата</th><th>Читатель</th><th class="right">Сумма</th><th class="right">Действия</th></tr></thead><tbody></tbody></table>
+        <table class="scroll" id="paymentsTbl" style="margin-top:10px"><thead><tr><th>Дата</th><th>Читатель</th><th class="right">Сумма</th><th class="right">Действия</th></tr></thead><tbody></tbody></table>
       </div>
 
       <!-- Отчёт -->
@@ -131,7 +142,7 @@
           <input id="toDate" type="date">
           <button id="applyPeriod" class="btn">Применить</button>
         </div>
-        <table id="reportTbl"><thead><tr><th>Читатель</th><th class="right">Страниц (в периоде)</th><th class="right">Невыполненных недель*</th><th class="right">Начислено штрафов</th><th class="right">Оплачено</th><th class="right">Долг</th></tr></thead><tbody></tbody></table>
+        <table class="scroll" id="reportTbl"><thead><tr><th>Читатель</th><th class="right">Страниц (в периоде)</th><th class="right">Невыполненных недель*</th><th class="right">Начислено штрафов</th><th class="right">Оплачено</th><th class="right">Долг</th></tr></thead><tbody></tbody></table>
         <div class="hint" style="margin-top:6px">* Невыполненные недели — количество пятничных записей ниже нормы в выбранном периоде.</div>
       </div>
     </div>
@@ -145,7 +156,7 @@
         <input id="newReaderName" placeholder="Имя читателя">
         <button id="addReader" class="btn ok">Добавить</button>
       </div>
-      <table style="margin-top:10px" id="readersTbl"><thead><tr><th>Имя</th><th class="right">Действия</th></tr></thead><tbody></tbody></table>
+      <table style="margin-top:10px" class=\"scroll\" id=\"readersTbl\"><thead><tr><th>Имя</th><th class="right">Действия</th></tr></thead><tbody></tbody></table>
       <div class="row" style="justify-content:flex-end;margin-top:10px"><button id="closeReaders" class="btn ghost">Закрыть</button></div>
     </div>
   </div>
@@ -169,8 +180,24 @@
   <script>
     // ====== Хранилище ======
     const KEY = 'reading.multi.v7';
-    function load(){ try{ return JSON.parse(localStorage.getItem(KEY)||'{}'); }catch{return {};} }
-    function save(db){ localStorage.setItem(KEY, JSON.stringify(db)); }
+    function load(){
+      try {
+        const raw = localStorage.getItem(KEY);
+        if(!raw && window.__memdb) return window.__memdb;
+        return JSON.parse(raw || '{}');
+      } catch (e) {
+        console.warn('localStorage.load error', e);
+        return window.__memdb || {};
+      }
+    }
+    function save(db){
+      try {
+        localStorage.setItem(KEY, JSON.stringify(db));
+      } catch (e) {
+        console.warn('localStorage.save error (fallback to memory)', e);
+        window.__memdb = db;
+      }
+    }
     function ensureDb(){ const db=load(); db.readers ||= [{id:'r1',name:'Айбек'},{id:'r2',name:'Олжо'},{id:'r3',name:'Ороз'}]; db.entries ||= []; db.payments ||= []; db.config ||= {weekPlan:35, fine:200, currency:'сом', fridayOnly:true, theme:'dark'}; save(db); return db; }
 
     // ====== Даты ======
@@ -277,17 +304,17 @@
       if(t.id==='applyPeriod'){ renderReport(ensureDb()); return; }
     });
 
-    $reportPreset.onchange = ()=>{ if($reportPreset.value!=='custom'){ setPreset($reportPreset.value); } };
-    $importBtn.onclick=()=> $import.click();
-    $import.onchange=async(e)=>{ const file=e.target.files[0]; if(!file) return; const text=await file.text(); const lines=text.split(/\r?\n/).filter(Boolean); const db={readers:[],entries:[],payments:[],config:{weekPlan:35,fine:200,currency:'сом',fridayOnly:true,theme:'dark'}}; const ridByName=new Map(); const getRid=(name)=>{ if(!ridByName.has(name)){ const id='r'+(ridByName.size+1); ridByName.set(name,id); db.readers.push({id,name}); } return ridByName.get(name); }; for(let i=1;i<lines.length;i++){ const [type,date,reader,value]=lines[i].split(','); if(type==='entry'){ db.entries.push({date,readerId:getRid(reader),pages:Number(value)}); } if(type==='payment'){ db.payments.push({date,readerId:getRid(reader),amount:Number(value)}); } } save(db); refreshHeader(); renderSelectors(db); renderEntries(db); renderPayments(db); renderReport(db); e.target.value=''; };
+    if($reportPreset) $reportPreset.onchange = ()=>{ if($reportPreset.value!=='custom'){ setPreset($reportPreset.value); } };
+    if($importBtn) $importBtn.onclick = ()=> $import.click();
+    if($import) $import.onchange = async(e)=>{ const file=e.target.files[0]; if(!file) return; const text=await file.text(); const lines=text.split(/\r?\n/).filter(Boolean); const db={readers:[],entries:[],payments:[],config:{weekPlan:35,fine:200,currency:'сом',fridayOnly:true,theme:'dark'}}; const ridByName=new Map(); const getRid=(name)=>{ if(!ridByName.has(name)){ const id='r'+(ridByName.size+1); ridByName.set(name,id); db.readers.push({id,name}); } return ridByName.get(name); }; for(let i=1;i<lines.length;i++){ const [type,date,reader,value]=lines[i].split(','); if(type==='entry'){ db.entries.push({date,readerId:getRid(reader),pages:Number(value)}); } if(type==='payment'){ db.payments.push({date,readerId:getRid(reader),amount:Number(value)}); } } save(db); refreshHeader(); renderSelectors(db); renderEntries(db); renderPayments(db); renderReport(db); e.target.value=''; };
 
-    $clear.onclick=()=>{ if(confirm('Точно удалить ВСЕ данные?')){ localStorage.removeItem(KEY); refreshHeader(); const db=ensureDb(); renderSelectors(db); renderEntries(db); renderPayments(db); renderReport(db); } };
+    if($clear) $clear.onclick = ()=>{ if(confirm('Точно удалить ВСЕ данные?')){ localStorage.removeItem(KEY); refreshHeader(); const db=ensureDb(); renderSelectors(db); renderEntries(db); renderPayments(db); renderReport(db); } };
 
     // Закрытие модалок по Esc / клику по фону
     document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ $settingsModal.classList.remove('open'); $readersModal.classList.remove('open'); }});
-    document.querySelectorAll('.modal').forEach(m=> m.addEventListener('click', (ev)=>{ if(ev.target===m) m.classList.remove('open'); }));
+    (document.querySelectorAll?document.querySelectorAll('.modal'):[]).forEach(m=> m.addEventListener('click', (ev)=>{ if(ev.target===m) m.classList.remove('open'); }));
 
-    // ====== Простые самотесты (не меняют данные) ======
+    // ====== Самотесты (не меняют данные) ======
     function runSelfTests(){
       const results=[];
       // 1) renderReadersModal exists & runs
@@ -304,12 +331,39 @@
       // 5) renderEntries/renderPayments do not throw
       try{ renderEntries(db); results.push({test:'renderEntries ok', pass:true}); }catch(e){ results.push({test:'renderEntries ok', pass:false, err:String(e)}); }
       try{ renderPayments(db); results.push({test:'renderPayments ok', pass:true}); }catch(e){ results.push({test:'renderPayments ok', pass:false, err:String(e)}); }
+      // 6) ensureDb creates defaults
+      const fresh=ensureDb(); results.push({test:'ensureDb defaults readers', pass: Array.isArray(fresh.readers) && fresh.readers.length>0});
       console.table(results);
     }
 
     // Инициализация
-    (function boot(){ const db=ensureDb(); applyTheme(db.config.theme||'dark'); $themeSel.value = db.config.theme||'dark'; refreshHeader(); renderSelectors(db); renderEntries(db); renderPayments(db); setPreset('this_month'); renderReport(db); runSelfTests(); })();
-    $themeSel.onchange = ()=>{ const db=ensureDb(); db.config.theme = $themeSel.value; save(db); applyTheme(db.config.theme); };
+    function boot(){
+      try{
+        const db=ensureDb();
+        applyTheme(db.config.theme||'dark');
+        if($themeSel){
+          $themeSel.value = db.config.theme||'dark';
+          $themeSel.addEventListener('change', ()=>{
+            const db2=ensureDb();
+            db2.config.theme = $themeSel.value;
+            save(db2);
+            applyTheme(db2.config.theme);
+          });
+        }
+        refreshHeader();
+        renderSelectors(db);
+        renderEntries(db);
+        renderPayments(db);
+        setPreset('this_month');
+        renderReport(db);
+        runSelfTests();
+      }catch(err){
+        console.error('Boot error', err);
+        showInlineError(err);
+      }
+    }
+    function showInlineError(err){ let bar=document.getElementById('errbar'); if(!bar){ bar=document.createElement('div'); bar.id='errbar'; bar.style.cssText='position:fixed;left:0;right:0;top:0;background:#b91c1c;color:#fff;padding:10px 14px;z-index:9999;font-weight:700'; document.body.appendChild(bar); } bar.textContent='Ошибка инициализации: '+String(err); }
+    if(document.readyState==='loading'){ window.addEventListener('DOMContentLoaded', boot, {once:true}); } else { boot(); }
   </script>
 </body>
 </html>
