@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Чтение • трекер (мультичитатели)</title>
+  <style>
+    /* ===== Темы ===== */
+    :root{ --bg:#0f1220; --card:#171a2b; --muted:#8f9bb3; --text:#eef1ff; --brand:#6c8cff; --ok:#29cc97; --warn:#ffb020; --danger:#ff5c5c; --ring:#232842; --select-bg:#171a2b; --select-text:#eef1ff; --select-border:#3b415f; --radius:18px; --shadow:0 12px 40px rgba(0,0,0,.35); --pad:16px; }
+    [data-theme="light"]{ --bg:#f5f7fb; --card:#ffffff; --text:#141627; --muted:#5f6b7a; --brand:#5162ff; --ok:#16a34a; --warn:#d97706; --danger:#ef4444; --ring:#e8ebf7; --shadow:0 12px 40px rgba(22,30,84,.10); --select-bg:#ffffff; --select-text:#141627; --select-border:#cbd5e1 }
+    [data-theme="emerald"]{ --bg:#061410; --card:#0c201a; --text:#e9fff7; --muted:#79a796; --brand:#10b981; --ok:#34d399; --warn:#f59e0b; --danger:#ef4444; --ring:#133228; --select-bg:#0c201a; --select-text:#e9fff7; --select-border:#134e4a }
+    [data-theme="violet"]{ --bg:#0f0b20; --card:#201a3a; --text:#f3e8ff; --muted:#b9a6e4; --brand:#8b5cf6; --ok:#22c55e; --warn:#eab308; --danger:#f43f5e; --ring:#2a2250; --select-bg:#201a3a; --select-text:#f3e8ff; --select-border:#5b21b6 }
+    [data-theme="amber"]{ --bg:#1a1406; --card:#2a210b; --text:#fff7e6; --muted:#e7d3a8; --brand:#f59e0b; --ok:#22c55e; --warn:#f59e0b; --danger:#ef4444; --ring:#3a2e12; --select-bg:#2a210b; --select-text:#fff7e6; --select-border:#92400e }
+
+    *{box-sizing:border-box}
+    body{margin:0;background: radial-gradient(1200px 600px at 100% -10%, rgba(108,140,255,.18), transparent 60%), radial-gradient(900px 500px at -10% 10%, rgba(41,204,151,.16), transparent 60%), var(--bg); color:var(--text); font:16px/1.45 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Ubuntu}
+    .wrap{max-width:1080px;margin:28px auto;padding:0 var(--pad)}
+    .grid{display:grid;gap:16px;grid-template-columns:repeat(12,1fr)}
+    .card{background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:18px}
+    h1{font-size:22px;margin:0 0 10px}
+    .muted{color:var(--muted)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .btn{border:1px solid transparent;background:var(--brand);color:#fff;padding:10px 14px;border-radius:12px;cursor:pointer;transition:.2s;font-weight:600}
+    .btn.ghost{background:transparent;border-color:var(--select-border);color:var(--text)}
+    .btn.warn{background:var(--danger)}
+    .btn.ok{background:var(--ok)}
+    input,select{color:var(--select-text);background:var(--select-bg);border:1px solid var(--select-border);outline:none;padding:10px 12px;border-radius:12px}
+    select option{background:var(--select-bg);color:var(--select-text)}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #2a2f4b}
+    tr:hover td{background:rgba(108,140,255,.06)}
+    .right{text-align:right}
+    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+    .chip{display:inline-block;padding:6px 10px;border-radius:999px;background:#232842;color:var(--text);font-size:12px}
+    .section-title{font-weight:800;font-size:18px;margin:0 0 8px}
+    .col-4{grid-column: span 4}.col-8{grid-column: span 8}.col-12{grid-column: span 12}
+    @media (max-width:980px){ .col-4,.col-8{grid-column:span 12} }
+    .hint{font-size:12px;color:var(--muted)}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px}
+    .badge.warn{background:#3a2e12;color:#ffcf66}
+    .badge.ok{background:#163226;color:#6ee7b7}
+    /* модальные окна */
+    .modal{position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.45); padding:20px; z-index:50}
+    .modal.open{display:grid}
+    .sheet{width:min(680px,94vw); background:var(--card); border-radius:20px; box-shadow:var(--shadow); padding:18px}
+    .sheet h2{margin:0 0 10px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="toolbar">
+      <div>
+        <h1>Чтение • трекер (мультичитатели)</h1>
+        <div class="muted">Еженедельные записи по пятницам до 23:59, штрафы и оплаты</div>
+      </div>
+      <div class="row">
+        <select id="themeSel" title="Тема">
+          <option value="dark">Тёмная</option>
+          <option value="light">Светлая</option>
+          <option value="emerald">Изумруд</option>
+          <option value="violet">Фиолет</option>
+          <option value="amber">Янтарь</option>
+        </select>
+        <button id="topReaders" class="btn ghost">Читатели</button>
+        <button id="settingsBtn" class="btn ghost">Настройки</button>
+        <button id="export" class="btn ghost">Экспорт CSV</button>
+        <input type="file" id="import" accept=".csv" style="display:none">
+        <button id="importBtn" class="btn ghost">Импорт CSV</button>
+        <button id="clear" class="btn warn">Очистить всё</button>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:14px">
+      <!-- Неделя / статус -->
+      <div class="card col-4">
+        <div class="section-title">Неделя</div>
+        <div class="muted" id="weekRange">—</div>
+        <div style="margin-top:8px"><span class="badge warn">Запись только по пятницам</span></div>
+        <div class="hint" style="margin-top:10px">Сегодня: <span id="todayLbl">—</span></div>
+        <div class="hint">До дедлайна: <span id="deadlineLbl">—</span></div>
+        <div class="hint">Норма: <b id="planVal">35</b> стр., штраф <b id="fineVal">200</b> <span id="curVal">сом</span></div>
+      </div>
+
+      <!-- Добавление записи -->
+      <div class="card col-8">
+        <div class="section-title">Добавить чтение</div>
+        <div class="row">
+          <select id="readerSel"></select>
+          <input id="date" type="date">
+          <input id="pages" type="number" min="0" step="1" placeholder="Страниц">
+          <button id="addEntry" class="btn">Сохранить запись</button>
+          <button id="manageReaders" class="btn ghost">Читатели</button>
+        </div>
+        <div class="hint" style="margin-top:8px">Запись принимается только в пятницу текущей недели (до 23:59). При недовыполнении нормы начисляется штраф.</div>
+      </div>
+
+      <!-- Журнал -->
+      <div class="card col-12">
+        <div class="section-title">Журнал</div>
+        <table id="entriesTbl"><thead><tr><th>Дата (пятница)</th><th>Читатель</th><th class="right">Страницы</th><th class="right">Штраф</th><th class="right">Действия</th></tr></thead><tbody></tbody></table>
+      </div>
+
+      <!-- Оплаты -->
+      <div class="card col-12">
+        <div class="section-title">Оплаты штрафов</div>
+        <div class="row">
+          <select id="payReader"></select>
+          <input id="payAmount" type="number" min="0" step="1" placeholder="Сумма">
+          <button id="addPayment" class="btn ok">Зачесть оплату</button>
+        </div>
+        <table id="paymentsTbl" style="margin-top:10px"><thead><tr><th>Дата</th><th>Читатель</th><th class="right">Сумма</th><th class="right">Действия</th></tr></thead><tbody></tbody></table>
+      </div>
+
+      <!-- Отчёт -->
+      <div class="card col-12">
+        <div class="section-title">Отчёт по читателям</div>
+        <div class="row" style="margin-bottom:8px">
+          <select id="reportPreset">
+            <option value="this_week">Эта неделя</option>
+            <option value="last_week">Прошлая неделя</option>
+            <option value="this_month">Этот месяц</option>
+            <option value="last_month">Прошлый месяц</option>
+            <option value="q1">Янв–Мар</option>
+            <option value="q2">Апр–Июн</option>
+            <option value="q3">Июл–Сен</option>
+            <option value="q4">Окт–Дек</option>
+            <option value="year">Текущий год</option>
+            <option value="custom">Произвольно…</option>
+          </select>
+          <input id="fromDate" type="date">
+          <input id="toDate" type="date">
+          <button id="applyPeriod" class="btn">Применить</button>
+        </div>
+        <table id="reportTbl"><thead><tr><th>Читатель</th><th class="right">Страниц (в периоде)</th><th class="right">Невыполненных недель*</th><th class="right">Начислено штрафов</th><th class="right">Оплачено</th><th class="right">Долг</th></tr></thead><tbody></tbody></table>
+        <div class="hint" style="margin-top:6px">* Невыполненные недели — количество пятничных записей ниже нормы в выбранном периоде.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка: Читатели -->
+  <div class="modal" id="readersModal">
+    <div class="sheet">
+      <h2>Читатели</h2>
+      <div class="row" style="margin-top:6px">
+        <input id="newReaderName" placeholder="Имя читателя">
+        <button id="addReader" class="btn ok">Добавить</button>
+      </div>
+      <table style="margin-top:10px" id="readersTbl"><thead><tr><th>Имя</th><th class="right">Действия</th></tr></thead><tbody></tbody></table>
+      <div class="row" style="justify-content:flex-end;margin-top:10px"><button id="closeReaders" class="btn ghost">Закрыть</button></div>
+    </div>
+  </div>
+
+  <!-- Модалка: Настройки -->
+  <div class="modal" id="settingsModal">
+    <div class="sheet">
+      <h2>Настройки</h2>
+      <div class="row" style="margin-top:6px">
+        <label class="row" style="gap:6px;align-items:center"><input id="cfgFridayOnly" type="checkbox"> Записи только по пятницам</label>
+        <input id="cfgPlan" type="number" min="0" step="1" placeholder="Норма за неделю (стр.)">
+        <input id="cfgFine" type="number" min="0" step="1" placeholder="Штраф (число)">
+        <input id="cfgCurrency" type="text" style="width:120px" placeholder="Валюта (напр. сом)">
+        <button id="saveCfg" class="btn ok">Сохранить</button>
+      </div>
+      <div class="hint" style="margin-top:8px">Параметры применяются ко всем читателям. <button id="openReadersFromSettings" class="btn ghost" style="margin-left:8px">Открыть «Читатели»</button></div>
+      <div class="row" style="justify-content:flex-end;margin-top:10px"><button id="closeSettings" class="btn ghost">Закрыть</button></div>
+    </div>
+  </div>
+
+  <script>
+    // ====== Хранилище ======
+    const KEY = 'reading.multi.v7';
+    function load(){ try{ return JSON.parse(localStorage.getItem(KEY)||'{}'); }catch{return {};} }
+    function save(db){ localStorage.setItem(KEY, JSON.stringify(db)); }
+    function ensureDb(){ const db=load(); db.readers ||= [{id:'r1',name:'Айбек'},{id:'r2',name:'Олжо'},{id:'r3',name:'Ороз'}]; db.entries ||= []; db.payments ||= []; db.config ||= {weekPlan:35, fine:200, currency:'сом', fridayOnly:true, theme:'dark'}; save(db); return db; }
+
+    // ====== Даты ======
+    const MS_DAY=86400000; const $=(s)=>document.querySelector(s);
+    function startOfDay(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+    function ymd(d){ return d.toISOString().slice(0,10); }
+    function getWeekFriday(d){ const day=d.getDay()===0?7:d.getDay(); return new Date(startOfDay(d).getTime() + (5 - day)*MS_DAY); }
+    function weekRange(d){ const day=d.getDay()===0?7:d.getDay(); const mon=new Date(startOfDay(d).getTime()-(day-1)*MS_DAY); const sun=new Date(mon.getTime()+6*MS_DAY); return [mon,sun]; }
+
+    // ====== DOM ======
+    const $themeSel=$('#themeSel'); const $settingsBtn=$('#settingsBtn'); const $settingsModal=$('#settingsModal'); const $cfgPlan=$('#cfgPlan'); const $cfgFine=$('#cfgFine'); const $cfgCurrency=$('#cfgCurrency'); const $cfgFridayOnly=$('#cfgFridayOnly'); const $saveCfg=$('#saveCfg'); const $closeSettings=$('#closeSettings'); const $openReadersFromSettings=$('#openReadersFromSettings');
+    const $readerSel=$('#readerSel'); const $date=$('#date'); const $pages=$('#pages'); const $addEntry=$('#addEntry'); const $manageReaders=$('#manageReaders'); const $topReaders=$('#topReaders');
+    const $entriesTbody=$('#entriesTbl tbody'); const $paymentsTbody=$('#paymentsTbl tbody');
+    const $payReader=$('#payReader'); const $payAmount=$('#payAmount'); const $addPayment=$('#addPayment');
+    const $reportPreset=$('#reportPreset'); const $fromDate=$('#fromDate'); const $toDate=$('#toDate'); const $applyPeriod=$('#applyPeriod');
+    const $reportTbody=$('#reportTbl tbody'); const $planVal=$('#planVal'); const $fineVal=$('#fineVal'); const $curVal=$('#curVal'); const $todayLbl=$('#todayLbl'); const $deadlineLbl=$('#deadlineLbl'); const $weekRangeEl=$('#weekRange');
+
+    const $export=$('#export'); const $import=$('#import'); const $importBtn=$('#importBtn'); const $clear=$('#clear');
+
+    // Readers modal
+    const $readersModal=$('#readersModal'); const $readersTbl=$('#readersTbl tbody'); const $newReaderName=$('#newReaderName'); const $addReaderBtn=$('#addReader'); const $closeReaders=$('#closeReaders');
+
+    // ====== Вспомогательные ======
+    function readerName(db,id){ return (db.readers.find(r=>r.id===id)||{}).name||'—'; }
+    function newId(prefix,list){ let i=list.length+1; let id; do{ id=prefix+i++; }while(list.some(x=>x.id===id)); return id; }
+    function upsertEntry(db,date,readerId,pages){ const i=db.entries.findIndex(e=> e.date===date && e.readerId===readerId); if(i>=0) db.entries[i].pages=pages; else db.entries.push({date,readerId,pages}); }
+    function calcFine(db,pages){ return pages < db.config.weekPlan ? db.config.fine : 0; }
+    function isAllowedToWrite(now){ const db=ensureDb(); if(!db.config.fridayOnly) return true; const fri=getWeekFriday(now); return startOfDay(now).getTime() === startOfDay(fri).getTime(); }
+    function fmtNum(n){ return new Intl.NumberFormat('ru-RU').format(n); }
+    function fmtMoney(db,n){ return `${fmtNum(n)} ${db.config.currency}`; }
+
+    // ====== Темы ======
+    function applyTheme(theme){ if(theme==='dark') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme',theme); }
+
+    // ====== Заголовок ======
+    function refreshHeader(){ const db=ensureDb(); $planVal.textContent=db.config.weekPlan; $fineVal.textContent=fmtNum(db.config.fine); $curVal.textContent=db.config.currency; const now=new Date(); const [mon,sun]=weekRange(now); const fri=getWeekFriday(now); $todayLbl.textContent=now.toLocaleString('ru-RU'); $weekRangeEl.textContent=`${mon.toLocaleDateString()} — ${sun.toLocaleDateString()} (пятница: ${fri.toLocaleDateString()})`; const till=new Date(fri.getFullYear(),fri.getMonth(),fri.getDate(),23,59,59); const diff=till-now; const h=Math.max(0,Math.floor(diff/36e5)); const m=Math.max(0,Math.floor((diff%36e5)/6e4)); $deadlineLbl.textContent=isAllowedToWrite(now)? `${h}ч ${m}м` : 'запись недоступна (ждите пятницу)'; $date.value=ymd(fri); }
+
+    function renderSelectors(db){ const opts=db.readers.map(r=>`<option value="${r.id}">${r.name}</option>`).join(''); $readerSel.innerHTML=opts; $payReader.innerHTML=opts; }
+
+    function renderEntries(db){ const rows=db.entries.slice().sort((a,b)=> b.date.localeCompare(a.date) || readerName(db,a.readerId).localeCompare(readerName(db,b.readerId))).map((e,i)=>{ const fine=calcFine(db,e.pages); return `<tr><td>${e.date}</td><td>${readerName(db,e.readerId)}</td><td class=right>${e.pages}</td><td class=right>${fine?('- '+fmtMoney(db,fine)):'<span class=\"badge ok\">нет</span>'}</td><td class=right><button class=\"btn ghost act-edit\" data-i=${i}>Ред.</button> <button class=\"btn warn act-del\" data-i=${i}>Удалить</button></td></tr>`; }).join(''); $entriesTbody.innerHTML=rows||'<tr><td colspan="5" class="muted">Записей пока нет</td></tr>'; }
+
+    function renderPayments(db){ const rows=db.payments.slice().sort((a,b)=> b.date.localeCompare(a.date)).map((p,i)=> `<tr><td>${p.date}</td><td>${readerName(db,p.readerId)}</td><td class=right>${fmtMoney(db,p.amount)}</td><td class=right><button class=\"btn warn act-del-pay\" data-i=${i}>Удалить</button></td></tr>`).join(''); $paymentsTbody.innerHTML=rows||'<tr><td colspan="4" class="muted">Оплат пока нет</td></tr>'; }
+
+    // ====== Рендер модалки «Читатели» ======
+    function renderReadersModal(db){
+      if(!$readersTbl) return; // защита
+      const rows = db.readers
+        .slice()
+        .sort((a,b)=> a.name.localeCompare(b.name))
+        .map(r=> `<tr><td>${r.name}</td><td class=right>
+            <button class=\"btn ghost r-rename\" data-id=${r.id}>Переименовать</button>
+            <button class=\"btn warn r-del\" data-id=${r.id}>Удалить</button>
+          </td></tr>`)
+        .join('');
+      $readersTbl.innerHTML = rows || '<tr><td colspan="2" class="muted">Нет читателей</td></tr>';
+    }
+
+    // ====== Отчёт по периодам ======
+    function inPeriod(dateStr, from, to){ const time=new Date(dateStr).getTime(); if(from){ const f=startOfDay(new Date(from)).getTime(); if(time<f) return false; } if(to){ const t=new Date(to); t.setHours(23,59,59,999); if(time>t.getTime()) return false; } return true; }
+    function renderReport(db){ const from=$fromDate.value||null; const to=$toDate.value||null; const agg={}; for(const r of db.readers){ agg[r.id]={name:r.name,pages:0,missed:0,fines:0,paid:0}; } for(const e of db.entries){ if(!inPeriod(e.date,from,to)) continue; const id=e.readerId; agg[id].pages += Number(e.pages)||0; const fine=calcFine(db,e.pages); if(fine){ agg[id].missed += 1; agg[id].fines += fine; } } for(const p of db.payments){ if(!inPeriod(p.date,from,to)) continue; agg[p.readerId].paid += Number(p.amount)||0; } const rows=Object.values(agg).sort((a,b)=> a.name.localeCompare(b.name)).map(r=> `<tr><td>${r.name}</td><td class=right>${r.pages}</td><td class=right>${r.missed}</td><td class=right>${fmtMoney(db,r.fines)}</td><td class=right>${fmtMoney(db,r.paid)}</td><td class=right>${fmtMoney(db,Math.max(0,r.fines-r.paid))}</td></tr>`).join(''); $reportTbody.innerHTML=rows||'<tr><td colspan="6" class="muted">Нет данных в выбранном периоде</td></tr>'; }
+
+    function setPreset(preset){ const now=new Date(); const y=now.getFullYear(); const m=now.getMonth(); const first=(yy,mm)=> new Date(yy,mm,1); const last=(yy,mm)=> new Date(yy,mm+1,0); if(preset==='this_week'){ const [mon,sun]=weekRange(now); $fromDate.value=ymd(mon); $toDate.value=ymd(sun); }
+      else if(preset==='last_week'){ const [mon,sun]=weekRange(new Date(now.getTime()-7*MS_DAY)); $fromDate.value=ymd(mon); $toDate.value=ymd(sun); }
+      else if(preset==='this_month'){ $fromDate.value=ymd(first(y,m)); $toDate.value=ymd(last(y,m)); }
+      else if(preset==='last_month'){ const d=new Date(y,m-1,1); $fromDate.value=ymd(first(d.getFullYear(),d.getMonth())); $toDate.value=ymd(last(d.getFullYear(),d.getMonth())); }
+      else if(preset==='q1'){ $fromDate.value=ymd(new Date(y,0,1)); $toDate.value=ymd(new Date(y,2,31)); }
+      else if(preset==='q2'){ $fromDate.value=ymd(new Date(y,3,1)); $toDate.value=ymd(new Date(y,5,30)); }
+      else if(preset==='q3'){ $fromDate.value=ymd(new Date(y,6,1)); $toDate.value=ymd(new Date(y,8,30)); }
+      else if(preset==='q4'){ $fromDate.value=ymd(new Date(y,9,1)); $toDate.value=ymd(new Date(y,11,31)); }
+      else if(preset==='year'){ $fromDate.value=ymd(new Date(y,0,1)); $toDate.value=ymd(new Date(y,11,31)); }
+    }
+
+    // ====== События ======
+    document.addEventListener('click', (e)=>{
+      const t=e.target; const db=ensureDb();
+      if(t.id==='addEntry'){
+        const now=new Date(); if(!isAllowedToWrite(now)) return alert('Запись разрешена только в пятницу текущей недели до 23:59. (Отключите ограничение в Настройках)');
+        const date=$date.value; const readerId=$readerSel.value; const pages=Number($pages.value||0);
+        if(!readerId) return alert('Выберите читателя');
+        upsertEntry(db,date,readerId,pages); save(db); $pages.value=''; renderEntries(db); renderReport(db); return;
+      }
+      if(t.id==='addPayment'){
+        const readerId=$payReader.value; const amount=Number($payAmount.value||0);
+        if(!readerId || amount<=0) return alert('Выберите читателя и сумму>0');
+        db.payments.push({date: ymd(new Date()), readerId, amount}); save(db); $payAmount.value=''; renderPayments(db); renderReport(db); return;
+      }
+      if(t.classList.contains('act-del')){ const i=Number(t.dataset.i); db.entries.splice(i,1); save(db); renderEntries(db); renderReport(db); return; }
+      if(t.classList.contains('act-edit')){ const i=Number(t.dataset.i); const eRow=db.entries[i]; $readerSel.value=eRow.readerId; $date.value=eRow.date; $pages.value=eRow.pages; window.scrollTo({top:0,behavior:'smooth'}); return; }
+      if(t.classList.contains('act-del-pay')){ const i=Number(t.dataset.i); db.payments.splice(i,1); save(db); renderPayments(db); renderReport(db); return; }
+      if(t.id==='manageReaders' || t.id==='topReaders' || t.id==='openReadersFromSettings'){ renderReadersModal(db); $newReaderName.value=''; $readersModal.classList.add('open'); return; }
+      if(t.id==='closeReaders'){ $readersModal.classList.remove('open'); return; }
+      if(t.id==='addReader'){ const name=($newReaderName.value||'').trim(); if(!name) return alert('Введите имя'); db.readers.push({id:newId('r',db.readers), name}); save(db); $newReaderName.value=''; renderReadersModal(db); renderSelectors(db); return; }
+      if(t.classList.contains('r-del')){ const id=t.dataset.id; if(!confirm('Удалить читателя и его данные?')) return; db.entries=db.entries.filter(e=>e.readerId!==id); db.payments=db.payments.filter(p=>p.readerId!==id); db.readers=db.readers.filter(r=>r.id!==id); save(db); renderReadersModal(db); renderSelectors(db); renderEntries(db); renderReport(db); return; }
+      if(t.classList.contains('r-rename')){ const id=t.dataset.id; const r=db.readers.find(x=>x.id===id); const name=prompt('Новое имя', r?.name||''); if(name!==null){ r.name=(name.trim()||r.name); save(db); renderReadersModal(db); renderSelectors(db); renderEntries(db); renderReport(db); } return; }
+      if(t.id==='export'){
+        const rows=[['type','date','reader','value']];
+        for(const e of db.entries){ rows.push(['entry',e.date,readerName(db,e.readerId),e.pages]); }
+        for(const p of db.payments){ rows.push(['payment',p.date,readerName(db,p.readerId),p.amount]); }
+        const csv=rows.map(r=> r.join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='reading-data.csv'; a.click(); URL.revokeObjectURL(url); return;
+      }
+      if(t.id==='settingsBtn'){ const db2=ensureDb(); $cfgPlan.value=db2.config.weekPlan; $cfgFine.value=db2.config.fine; $cfgCurrency.value=db2.config.currency; $cfgFridayOnly.checked=!!db2.config.fridayOnly; $settingsModal.classList.add('open'); return; }
+      if(t.id==='closeSettings'){ $settingsModal.classList.remove('open'); return; }
+      if(t.id==='saveCfg'){ const p=Math.max(0,Number($cfgPlan.value||0)); const f=Math.max(0,Number($cfgFine.value||0)); const c=($cfgCurrency.value||'сом').trim(); const fri=!!$cfgFridayOnly.checked; const db3=ensureDb(); db3.config.weekPlan=p; db3.config.fine=f; db3.config.currency=c||'сом'; db3.config.fridayOnly=fri; save(db3); $settingsModal.classList.remove('open'); refreshHeader(); renderEntries(db3); renderReport(db3); return; }
+      if(t.id==='applyPeriod'){ renderReport(ensureDb()); return; }
+    });
+
+    $reportPreset.onchange = ()=>{ if($reportPreset.value!=='custom'){ setPreset($reportPreset.value); } };
+    $importBtn.onclick=()=> $import.click();
+    $import.onchange=async(e)=>{ const file=e.target.files[0]; if(!file) return; const text=await file.text(); const lines=text.split(/\r?\n/).filter(Boolean); const db={readers:[],entries:[],payments:[],config:{weekPlan:35,fine:200,currency:'сом',fridayOnly:true,theme:'dark'}}; const ridByName=new Map(); const getRid=(name)=>{ if(!ridByName.has(name)){ const id='r'+(ridByName.size+1); ridByName.set(name,id); db.readers.push({id,name}); } return ridByName.get(name); }; for(let i=1;i<lines.length;i++){ const [type,date,reader,value]=lines[i].split(','); if(type==='entry'){ db.entries.push({date,readerId:getRid(reader),pages:Number(value)}); } if(type==='payment'){ db.payments.push({date,readerId:getRid(reader),amount:Number(value)}); } } save(db); refreshHeader(); renderSelectors(db); renderEntries(db); renderPayments(db); renderReport(db); e.target.value=''; };
+
+    $clear.onclick=()=>{ if(confirm('Точно удалить ВСЕ данные?')){ localStorage.removeItem(KEY); refreshHeader(); const db=ensureDb(); renderSelectors(db); renderEntries(db); renderPayments(db); renderReport(db); } };
+
+    // Закрытие модалок по Esc / клику по фону
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ $settingsModal.classList.remove('open'); $readersModal.classList.remove('open'); }});
+    document.querySelectorAll('.modal').forEach(m=> m.addEventListener('click', (ev)=>{ if(ev.target===m) m.classList.remove('open'); }));
+
+    // ====== Простые самотесты (не меняют данные) ======
+    function runSelfTests(){
+      const results=[];
+      // 1) renderReadersModal exists & runs
+      results.push({test:'renderReadersModal defined', pass: typeof renderReadersModal==='function'});
+      try{ renderReadersModal(ensureDb()); results.push({test:'renderReadersModal renders', pass: ($readersTbl && $readersTbl.innerHTML.length>=0)}); }catch(err){ results.push({test:'renderReadersModal call', pass:false, err:String(err)}); }
+      // 2) calcFine logic
+      const db=ensureDb(); const plan=db.config.weekPlan; const fine=db.config.fine;
+      results.push({test:'calcFine below plan', pass: calcFine(db, Math.max(0,plan-1))===fine});
+      results.push({test:'calcFine meets plan', pass: calcFine(db, plan)===0});
+      // 3) isAllowedToWrite when fridayOnly=false should allow any day
+      const origFlag=db.config.fridayOnly; db.config.fridayOnly=false; results.push({test:'isAllowedToWrite any day when fridayOnly=false', pass: isAllowedToWrite(new Date())===true}); db.config.fridayOnly=origFlag;
+      // 4) setPreset fills dates
+      setPreset('this_month'); results.push({test:'preset this_month has dates', pass: !!document.getElementById('fromDate').value && !!document.getElementById('toDate').value});
+      // 5) renderEntries/renderPayments do not throw
+      try{ renderEntries(db); results.push({test:'renderEntries ok', pass:true}); }catch(e){ results.push({test:'renderEntries ok', pass:false, err:String(e)}); }
+      try{ renderPayments(db); results.push({test:'renderPayments ok', pass:true}); }catch(e){ results.push({test:'renderPayments ok', pass:false, err:String(e)}); }
+      console.table(results);
+    }
+
+    // Инициализация
+    (function boot(){ const db=ensureDb(); applyTheme(db.config.theme||'dark'); $themeSel.value = db.config.theme||'dark'; refreshHeader(); renderSelectors(db); renderEntries(db); renderPayments(db); setPreset('this_month'); renderReport(db); runSelfTests(); })();
+    $themeSel.onchange = ()=>{ const db=ensureDb(); db.config.theme = $themeSel.value; save(db); applyTheme(db.config.theme); };
+  </script>
+</body>
+</html>
